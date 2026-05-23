@@ -37,19 +37,5 @@ DISCLAIMER_PT = (
     "Este relatório apresenta uma análise automatizada de similaridade entre disciplinas "
     "com base nos documentos enviados. Ele não representa uma decisão oficial da "
     "instituição de ensino. A aceitação final de equivalência ou aproveitamento de "
-    "disciplinas depende das regras e da análise da própria instituição."
+    "créditos deve ser realizada por um revisor humano."
 )
-
-DISCLAIMER_EN = (
-    "This report provides an automated similarity analysis between academic subjects "
-    "based on the uploaded documents. It does not represent an official institutional "
-    "decision. Final acceptance of subject equivalency or credit transfer depends on "
-    "the rules and review process of the educational institution."
-)
-
-CLASSIFICATION_LABELS_PT = {
-    "strong_equivalency": "Forte indicação de equivalência",
-    "likely_equivalency": "Provável equivalência, revisar manualmente",
-    "partial_similarity": "Similaridade parcial",
-    "no_match": "Nenhuma equivalência forte encontrada",
-}
