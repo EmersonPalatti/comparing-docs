@@ -134,9 +134,10 @@ def format_optional_score(value: float | int | None) -> str:
 
 
 def dataframe_to_xlsx(dataframe: pd.DataFrame) -> bytes:
+    safe_dataframe = sanitize_excel_dataframe(dataframe)
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        dataframe.to_excel(writer, index=False, sheet_name="equivalencias")
+        safe_dataframe.to_excel(writer, index=False, sheet_name="equivalencias")
     return output.getvalue()
 
 
@@ -145,7 +146,7 @@ def final_review_report_to_xlsx(
     previous_subjects: list[Subject],
     current_subjects: list[Subject],
 ) -> bytes:
-    selected = selected_matches.copy()
+    selected = sanitize_excel_dataframe(selected_matches)
     previous_without_selection = subjects_without_selected_match(
         previous_subjects,
         selected,
@@ -160,8 +161,12 @@ def final_review_report_to_xlsx(
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         selected.to_excel(writer, index=False, sheet_name="matches_selecionados")
-        previous_without_selection.to_excel(writer, index=False, sheet_name="anteriores_sem_match")
-        current_not_used.to_excel(writer, index=False, sheet_name="atuais_nao_usadas")
+        sanitize_excel_dataframe(previous_without_selection).to_excel(
+            writer,
+            index=False,
+            sheet_name="anteriores_sem_match",
+        )
+        sanitize_excel_dataframe(current_not_used).to_excel(writer, index=False, sheet_name="atuais_nao_usadas")
     return output.getvalue()
 
 
@@ -203,3 +208,23 @@ def workload_column_for(subject_column: str) -> str:
 
 def subject_key(name: object, workload: object) -> tuple[str, str]:
     return (str(name).strip().lower(), "" if pd.isna(workload) else str(workload).strip())
+
+
+FORMULA_PREFIXES = ("=", "+", "-", "@")
+
+
+def sanitize_excel_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
+    safe = dataframe.copy()
+    for column in safe.columns:
+        safe[column] = safe[column].map(sanitize_excel_value)
+    return safe
+
+
+def sanitize_excel_value(value: object) -> object:
+    if value is None or pd.isna(value) or isinstance(value, (bool, int, float)):
+        return value
+    text = str(value)
+    stripped = text.lstrip()
+    if stripped.startswith(FORMULA_PREFIXES):
+        return f"'{text}"
+    return text
