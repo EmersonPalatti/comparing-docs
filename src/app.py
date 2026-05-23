@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -9,7 +10,16 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.auth import credentials_configured, credentials_match, get_expected_credentials
+from src.auth import (
+    build_client_key,
+    credentials_configured,
+    credentials_match,
+    get_expected_credentials,
+    is_locked_out,
+    login_delay_seconds,
+    register_failed_attempt,
+    register_successful_login,
+)
 from src.config import DISCLAIMER_PT
 from src.document_loader import load_document
 from src.matcher import match_subjects
@@ -264,9 +274,25 @@ def require_login() -> bool:
 
     if not credentials_configured(expected_username, expected_password):
         st.error(
-            "Login não configurado. Configure APP_USERNAME e APP_PASSWORD nas variáveis de ambiente "
-            "ou em Secrets do Streamlit Cloud."
+            "Login não configurado com política mínima de segurança. Configure APP_USERNAME e APP_PASSWORD "
+            "em Secrets (senha forte com no mínimo 12 caracteres e sem credenciais padrão)."
         )
+        return False
+
+    headers = None
+    try:
+        headers = st.context.headers  # type: ignore[attr-defined]
+    except Exception:
+        headers = None
+    session_identifier = st.session_state.get("_auth_session_id")
+    if not session_identifier:
+        session_identifier = str(time.time_ns())
+        st.session_state["_auth_session_id"] = session_identifier
+    client_key = build_client_key(headers=headers, session_identifier=session_identifier)
+
+    locked, seconds_remaining = is_locked_out(client_key)
+    if locked:
+        st.error(f"Muitas tentativas de login. Tente novamente em {seconds_remaining}s.")
         return False
 
     with st.form("login_form"):
@@ -275,10 +301,18 @@ def require_login() -> bool:
         submitted = st.form_submit_button("Entrar", type="primary")
 
     if submitted:
+        delay = login_delay_seconds(client_key)
+        if delay > 0:
+            time.sleep(delay)
         if credentials_match(username, password, expected_username, expected_password):
             st.session_state["authenticated"] = True
             st.session_state["authenticated_user"] = username
+            register_successful_login(client_key)
             st.rerun()
+        locked, seconds_remaining = register_failed_attempt(client_key)
+        if locked:
+            st.error(f"Muitas tentativas de login. Tente novamente em {seconds_remaining}s.")
+            return False
         st.error("Usuário ou senha inválidos.")
 
     return False

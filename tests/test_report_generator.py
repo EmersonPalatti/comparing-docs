@@ -1,6 +1,7 @@
 from src.models import Subject, SubjectMatch
 from io import BytesIO
 from src.report_generator import (
+    dataframe_to_xlsx,
     final_review_report_to_xlsx,
     match_alerts,
     match_priority,
@@ -145,3 +146,42 @@ def test_final_review_report_to_xlsx_creates_expected_sheets():
     assert sheets["matches_selecionados"].loc[0, "Observação do revisor"] == "Enviar para análise."
     assert sheets["anteriores_sem_match"].loc[0, "Disciplina"] == "Farmacologia Geral"
     assert sheets["atuais_nao_usadas"].loc[0, "Disciplina"] == "Hematologia Básica"
+
+
+def test_dataframe_to_xlsx_sanitizes_formula_injection():
+    import pandas as pd
+
+    dataframe = pd.DataFrame({"Disciplina": ["=CMD()", "+SUM(A1:A2)", "-1+2", "@foo"]})
+
+    workbook = dataframe_to_xlsx(dataframe)
+    sheets = pd.read_excel(BytesIO(workbook), sheet_name=None)
+    values = sheets["equivalencias"]["Disciplina"].tolist()
+
+    assert values == ["'=CMD()", "'+SUM(A1:A2)", "'-1+2", "'@foo"]
+
+
+def test_final_review_report_to_xlsx_sanitizes_user_notes():
+    selected = matches_to_summary_dataframe(
+        [
+            SubjectMatch(
+                previous_subject=Subject(name="Bioquimica Metabolica", source_document="previous.pdf", workload_hours=80),
+                current_subject=Subject(name="Bioquimica Geral", source_document="current.pdf", workload_hours=80),
+                semantic_similarity=0.8,
+                name_similarity=0.75,
+                workload_score=1.0,
+                credit_score=None,
+                final_score=0.8213,
+                classification="likely_equivalency",
+                requires_manual_review=True,
+            )
+        ]
+    )
+    selected.loc[0, "Selecionar"] = True
+    selected.loc[0, "Observação do revisor"] = "=HYPERLINK(\"http://malicious\")"
+
+    workbook = final_review_report_to_xlsx(selected, previous_subjects=[], current_subjects=[])
+
+    import pandas as pd
+
+    sheets = pd.read_excel(BytesIO(workbook), sheet_name=None)
+    assert sheets["matches_selecionados"].loc[0, "Observação do revisor"] == "'=HYPERLINK(\"http://malicious\")"

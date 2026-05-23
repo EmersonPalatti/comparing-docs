@@ -13,8 +13,8 @@ uv run streamlit run src/app.py
 Para acessar a UI, configure login local por variaveis de ambiente:
 
 ```powershell
-$env:APP_USERNAME="admin"
-$env:APP_PASSWORD="sua-senha"
+$env:APP_USERNAME="usuario-seguro"
+$env:APP_PASSWORD="senha-forte-com-pelo-menos-12-caracteres"
 uv run streamlit run src/app.py
 ```
 
@@ -39,6 +39,12 @@ A tabela de resultado inclui `Prioridade` e `Alertas`, com formatacao condiciona
 uv run pytest
 ```
 
+Sem `uv`, rode:
+
+```powershell
+python -m pytest
+```
+
 ## Arquivos suportados no MVP
 
 - PDF com texto selecionavel
@@ -47,3 +53,9 @@ uv run pytest
 - TXT/MD
 
 PDFs escaneados sem texto selecionavel retornam uma mensagem clara. OCR nao faz parte deste MVP.
+
+## Segurança
+
+- Consulte [README_DEPLOY.md](README_DEPLOY.md) para política de credenciais e dependências.
+- Consulte [SECURITY_DEPLOY_CHECKLIST.md](SECURITY_DEPLOY_CHECKLIST.md) para checklist operacional de release.
+- Consulte [SECURITY_REASSESSMENT.md](SECURITY_REASSESSMENT.md) para o resumo de reavaliação de risco.
