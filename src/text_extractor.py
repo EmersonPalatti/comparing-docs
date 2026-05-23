@@ -7,6 +7,7 @@ from typing import BinaryIO
 import pandas as pd
 import pdfplumber
 
+from src.config import MAX_PDF_PAGES, MAX_SPREADSHEET_COLUMNS, MAX_SPREADSHEET_ROWS, MAX_UPLOAD_BYTES
 
 class TextExtractionError(ValueError):
     """Raised when a document cannot be converted into useful text."""
@@ -30,7 +31,9 @@ def clean_text(text: str) -> str:
 def extract_text_from_pdf(content: bytes) -> str:
     pages: list[str] = []
     with pdfplumber.open(BytesIO(content)) as pdf:
-        for page in pdf.pages:
+        for page_index, page in enumerate(pdf.pages):
+            if page_index >= MAX_PDF_PAGES:
+                break
             page_text = page.extract_text() or ""
             if page_text.strip():
                 pages.append(page_text)
@@ -52,6 +55,14 @@ def extract_text_from_spreadsheet(content: bytes, suffix: str) -> str:
 
     if dataframe.empty:
         raise TextExtractionError("O arquivo de planilha está vazio.")
+    if len(dataframe.index) > MAX_SPREADSHEET_ROWS:
+        raise TextExtractionError(
+            f"Limite de planilha excedido: máximo de {MAX_SPREADSHEET_ROWS} linhas por arquivo."
+        )
+    if len(dataframe.columns) > MAX_SPREADSHEET_COLUMNS:
+        raise TextExtractionError(
+            f"Limite de planilha excedido: máximo de {MAX_SPREADSHEET_COLUMNS} colunas por arquivo."
+        )
 
     return dataframe.fillna("").to_csv(index=False)
 
@@ -67,9 +78,16 @@ def extract_text_from_txt(content: bytes) -> str:
 
 def read_binary(file: BinaryIO | bytes | str | Path) -> bytes:
     if isinstance(file, bytes):
-        return file
-    if isinstance(file, (str, Path)):
-        return Path(file).read_bytes()
-    if hasattr(file, "getvalue"):
-        return file.getvalue()
-    return file.read()
+        content = file
+    elif isinstance(file, (str, Path)):
+        content = Path(file).read_bytes()
+    elif hasattr(file, "getvalue"):
+        content = file.getvalue()
+    else:
+        content = file.read()
+
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise TextExtractionError(
+            f"Arquivo excede o tamanho máximo permitido de {MAX_UPLOAD_BYTES} bytes."
+        )
+    return content

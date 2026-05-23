@@ -29,7 +29,10 @@ def get_filename(file: BinaryIO | bytes | str | Path, fallback: str) -> str:
 def load_document(file: BinaryIO | bytes | str | Path, source_document: str) -> ExtractedDocument:
     filename = get_filename(file, source_document)
     suffix = Path(filename).suffix.lower()
-    content = read_binary(file)
+    try:
+        content = read_binary(file)
+    except TextExtractionError as error:
+        raise TextExtractionError(f"{filename}: {error}") from error
 
     if not content:
         raise TextExtractionError("O arquivo enviado está vazio.")

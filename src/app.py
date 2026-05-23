@@ -114,7 +114,7 @@ def main() -> None:
                 st.session_state.pop("matches_detailed_display_df", None)
                 st.session_state.pop("matches_summary_df", None)
         except (TextExtractionError, ValueError) as error:
-            st.error(str(error))
+            st.error(friendly_extraction_error(error))
 
     previous_table = st.session_state.get("previous_subjects_df")
     current_table = st.session_state.get("current_subjects_df")
@@ -495,6 +495,15 @@ def parse_percent(value: str) -> float | None:
         return float(str(value).replace("%", "").replace(",", ".").strip())
     except ValueError:
         return None
+
+
+def friendly_extraction_error(error: Exception) -> str:
+    message = str(error)
+    if "excede o tamanho máximo" in message or "Limite de planilha excedido" in message:
+        return (
+            f"{message} Ajuste o documento para ficar dentro dos limites de upload e tente novamente."
+        )
+    return message
 
 
 if __name__ == "__main__":
