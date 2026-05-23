@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.auth import credentials_configured, credentials_match, get_expected_credentials
+from src.auth import clear_login_failures, initialize_login_state, is_login_locked, register_failed_attempt
 from src.config import DISCLAIMER_PT
 from src.document_loader import load_document
 from src.matcher import match_subjects
@@ -250,6 +251,8 @@ def main() -> None:
 
 
 def require_login() -> bool:
+    initialize_login_state(st.session_state)
+
     if st.session_state.get("authenticated"):
         st.sidebar.caption(f"Logado como {st.session_state.get('authenticated_user', 'usuário')}")
         if st.sidebar.button("Sair"):
@@ -272,13 +275,20 @@ def require_login() -> bool:
     with st.form("login_form"):
         username = st.text_input("Usuário")
         password = st.text_input("Senha", type="password")
-        submitted = st.form_submit_button("Entrar", type="primary")
+        locked, remaining = is_login_locked(st.session_state)
+        if locked:
+            remaining_seconds = max(1, int(remaining.total_seconds()))
+            minutes, seconds = divmod(remaining_seconds, 60)
+            st.warning(f"Muitas tentativas inválidas. Tente novamente em {minutes:02d}:{seconds:02d}.")
+        submitted = st.form_submit_button("Entrar", type="primary", disabled=locked)
 
     if submitted:
         if credentials_match(username, password, expected_username, expected_password):
             st.session_state["authenticated"] = True
             st.session_state["authenticated_user"] = username
+            clear_login_failures(st.session_state)
             st.rerun()
+        register_failed_attempt(st.session_state)
         st.error("Usuário ou senha inválidos.")
 
     return False

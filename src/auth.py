@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import hmac
 import os
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 
 USERNAME_ENV = "APP_USERNAME"
 PASSWORD_ENV = "APP_PASSWORD"
+FAILED_ATTEMPTS_KEY = "failed_attempts"
+FIRST_FAILED_AT_KEY = "first_failed_at"
+LOCKED_UNTIL_KEY = "locked_until"
 
 
 def get_expected_credentials(
@@ -59,3 +63,50 @@ def credentials_match(
         provided_password,
         expected_password or "",
     )
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
+
+
+def initialize_login_state(session_state: MutableMapping[str, Any]) -> None:
+    session_state.setdefault(FAILED_ATTEMPTS_KEY, 0)
+    session_state.setdefault(FIRST_FAILED_AT_KEY, None)
+    session_state.setdefault(LOCKED_UNTIL_KEY, None)
+
+
+def is_login_locked(session_state: MutableMapping[str, Any], now: datetime | None = None) -> tuple[bool, timedelta]:
+    locked_until = session_state.get(LOCKED_UNTIL_KEY)
+    if not isinstance(locked_until, datetime):
+        return False, timedelta(0)
+    now = now or _utcnow()
+    if locked_until <= now:
+        session_state[LOCKED_UNTIL_KEY] = None
+        return False, timedelta(0)
+    return True, locked_until - now
+
+
+def register_failed_attempt(
+    session_state: MutableMapping[str, Any],
+    *,
+    now: datetime | None = None,
+    max_attempts: int = 5,
+    lock_duration: timedelta = timedelta(minutes=15),
+) -> bool:
+    now = now or _utcnow()
+    attempts = int(session_state.get(FAILED_ATTEMPTS_KEY, 0)) + 1
+    session_state[FAILED_ATTEMPTS_KEY] = attempts
+    if session_state.get(FIRST_FAILED_AT_KEY) is None:
+        session_state[FIRST_FAILED_AT_KEY] = now
+    if attempts >= max_attempts:
+        session_state[LOCKED_UNTIL_KEY] = now + lock_duration
+        session_state[FAILED_ATTEMPTS_KEY] = 0
+        session_state[FIRST_FAILED_AT_KEY] = None
+        return True
+    return False
+
+
+def clear_login_failures(session_state: MutableMapping[str, Any]) -> None:
+    session_state[FAILED_ATTEMPTS_KEY] = 0
+    session_state[FIRST_FAILED_AT_KEY] = None
+    session_state[LOCKED_UNTIL_KEY] = None
