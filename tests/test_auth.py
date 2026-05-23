@@ -34,6 +34,7 @@ def test_environment_credentials_take_precedence():
 
 def test_credentials_match_uses_expected_values():
     assert credentials_configured("analista", "segredo-super-forte") is True
+    assert credentials_configured("analista", "curta") is False
     assert credentials_match("analista", "segredo-super-forte", "analista", "segredo-super-forte") is True
     assert credentials_match("analista", "wrong", "analista", "segredo-super-forte") is False
     assert credentials_match("admin", "secret", None, None) is False

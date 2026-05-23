@@ -100,11 +100,11 @@ def build_client_key(
     headers: Mapping[str, Any] | None = None,
     session_identifier: str | None = None,
 ) -> str:
-    ip = ""
+    ip: str | None = None
     if headers:
         forwarded_for = str(mapping_get(headers, "x-forwarded-for") or "").split(",")[0].strip()
         real_ip = str(mapping_get(headers, "x-real-ip") or "").strip()
-        ip = forwarded_for or real_ip
+        ip = forwarded_for or real_ip or None
     if ip:
         return f"ip:{ip}"
     if session_identifier:

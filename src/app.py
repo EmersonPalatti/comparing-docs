@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import sys
 import time
 from pathlib import Path
@@ -42,6 +43,8 @@ from src.text_extractor import TextExtractionError
 
 
 st.set_page_config(page_title="Comparador de Equivalência Acadêmica", layout="wide")
+if not logging.getLogger().handlers:
+    logging.basicConfig(level=logging.INFO)
 
 
 def extract_subject_tables(previous_file, current_file):
