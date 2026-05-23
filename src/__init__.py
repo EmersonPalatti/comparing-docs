@@ -1,0 +1,1 @@
+"""Curriculum equivalency comparison package."""

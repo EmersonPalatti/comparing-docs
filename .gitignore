@@ -1,0 +1,36 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv
+.venv/
+venv/
+env/
+
+# Local Streamlit secrets
+.streamlit/secrets.toml
+
+# Local test/private documents
+pdfs/
+data/temp/
+outputs/
+
+# Project-local agent/internal notes
+AGENTS.md
+PROJECT_EXPLANATION.md
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
