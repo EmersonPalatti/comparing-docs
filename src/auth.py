@@ -105,8 +105,8 @@ def build_client_key(
 ) -> str:
     ip: str | None = None
     if headers and trust_proxy_headers:
-        forwarded_for = str(mapping_get(headers, "x-forwarded-for") or "").split(",")[0].strip()
-        real_ip = str(mapping_get(headers, "x-real-ip") or "").strip()
+        forwarded_for = str(headers.get("x-forwarded-for", "")).split(",")[0].strip()
+        real_ip = str(headers.get("x-real-ip", "")).strip()
         ip = forwarded_for or real_ip or None
     if ip:
         return f"ip:{ip}"
