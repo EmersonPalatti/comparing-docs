@@ -185,3 +185,16 @@ def test_final_review_report_to_xlsx_sanitizes_user_notes():
 
     sheets = pd.read_excel(BytesIO(workbook), sheet_name=None)
     assert sheets["matches_selecionados"].loc[0, "Observação do revisor"] == "'=HYPERLINK(\"http://malicious\")"
+
+
+def test_dataframe_to_xlsx_keeps_numeric_scalars_as_numeric():
+    import pandas as pd
+
+    dataframe = pd.DataFrame({"Carga horária": pd.Series([80], dtype="int64")})
+
+    workbook = dataframe_to_xlsx(dataframe)
+    sheets = pd.read_excel(BytesIO(workbook), sheet_name=None)
+    value = sheets["equivalencias"].loc[0, "Carga horária"]
+
+    assert pd.api.types.is_number(value)
+    assert value == 80

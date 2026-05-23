@@ -13,6 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.auth import (
     build_client_key,
+    credential_policy_ok,
     credentials_configured,
     credentials_match,
     get_expected_credentials,
@@ -276,9 +277,13 @@ def require_login() -> bool:
     st.write("Acesse a ferramenta de comparação acadêmica.")
 
     if not credentials_configured(expected_username, expected_password):
+        st.error("Login não configurado. Defina APP_USERNAME e APP_PASSWORD em Secrets.")
+        return False
+
+    if not credential_policy_ok(expected_username, expected_password):
         st.error(
-            "Login não configurado com política mínima de segurança. Configure APP_USERNAME e APP_PASSWORD "
-            "em Secrets (senha forte com no mínimo 12 caracteres e sem credenciais padrão)."
+            "Credenciais configuradas, mas fora da política mínima de segurança "
+            "(senha forte com no mínimo 12 caracteres e sem credenciais padrão)."
         )
         return False
 

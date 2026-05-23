@@ -12,7 +12,9 @@ from src.config import (
     AUTH_LOCKOUT_SECONDS,
     AUTH_MAX_ATTEMPTS,
     AUTH_MAX_DELAY_SECONDS,
+    AUTH_REGISTRY_MAX_ENTRIES,
     AUTH_RATE_WINDOW_SECONDS,
+    AUTH_TRUST_PROXY_HEADERS,
 )
 
 
@@ -65,7 +67,7 @@ def mapping_get(mapping: Mapping[str, Any], key: str) -> Any:
 
 
 def credentials_configured(username: str | None, password: str | None) -> bool:
-    return credential_policy_ok(username, password)
+    return bool(username and password)
 
 
 def credentials_match(
@@ -99,9 +101,10 @@ def credential_policy_ok(username: str | None, password: str | None) -> bool:
 def build_client_key(
     headers: Mapping[str, Any] | None = None,
     session_identifier: str | None = None,
+    trust_proxy_headers: bool = AUTH_TRUST_PROXY_HEADERS,
 ) -> str:
     ip: str | None = None
-    if headers:
+    if headers and trust_proxy_headers:
         forwarded_for = str(mapping_get(headers, "x-forwarded-for") or "").split(",")[0].strip()
         real_ip = str(mapping_get(headers, "x-real-ip") or "").strip()
         ip = forwarded_for or real_ip or None
@@ -132,6 +135,7 @@ def is_locked_out(client_key: str, now: float | None = None) -> tuple[bool, int]
 
 def register_failed_attempt(client_key: str, now: float | None = None) -> tuple[bool, int]:
     current_time = now if now is not None else time.time()
+    _prune_registry(now=current_time)
     state = _current_state(client_key, now=current_time)
     failures = int(state.get("failures", 0)) + 1
     state["failures"] = failures
@@ -152,6 +156,7 @@ def register_successful_login(client_key: str) -> None:
 
 def _current_state(client_key: str, now: float | None = None) -> dict[str, float | int]:
     current_time = now if now is not None else time.time()
+    _prune_registry(now=current_time)
     state = AUTH_REGISTRY.get(client_key, {}).copy()
     last_failure = float(state.get("last_failure", 0))
     if last_failure and current_time - last_failure > AUTH_RATE_WINDOW_SECONDS:
@@ -159,3 +164,25 @@ def _current_state(client_key: str, now: float | None = None) -> dict[str, float
     state.setdefault("failures", 0)
     state.setdefault("lock_until", 0.0)
     return state
+
+
+def _prune_registry(now: float | None = None) -> None:
+    current_time = now if now is not None else time.time()
+    stale_keys = [
+        key
+        for key, state in AUTH_REGISTRY.items()
+        if current_time - float(state.get("last_failure", 0)) > AUTH_RATE_WINDOW_SECONDS
+    ]
+    for key in stale_keys:
+        AUTH_REGISTRY.pop(key, None)
+
+    overflow = len(AUTH_REGISTRY) - AUTH_REGISTRY_MAX_ENTRIES
+    if overflow <= 0:
+        return
+
+    oldest_keys = sorted(
+        AUTH_REGISTRY,
+        key=lambda key: float(AUTH_REGISTRY[key].get("last_failure", 0)),
+    )[:overflow]
+    for key in oldest_keys:
+        AUTH_REGISTRY.pop(key, None)

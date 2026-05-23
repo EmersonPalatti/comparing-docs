@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,6 +28,12 @@ PDF_SIGNATURE = b"%PDF-"
 ZIP_SIGNATURE = b"PK\x03\x04"
 OLE_SIGNATURE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
 TEXT_SUFFIXES = {".txt", ".md", ".csv"}
+_EXTRACTION_EXECUTOR = ThreadPoolExecutor(max_workers=4)
+
+
+@atexit.register
+def _shutdown_extraction_executor() -> None:
+    _EXTRACTION_EXECUTOR.shutdown(wait=False, cancel_futures=True)
 
 
 def get_filename(file: BinaryIO | bytes | str | Path, fallback: str) -> str:
@@ -63,17 +70,16 @@ def load_document(file: BinaryIO | bytes | str | Path, source_document: str) -> 
 
 
 def extract_with_timeout(extractor, *args):
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(extractor, *args)
-        try:
-            return future.result(timeout=EXTRACTION_TIMEOUT_SECONDS)
-        except FutureTimeoutError as error:
-            future.cancel()
-            raise TextExtractionError("A extração excedeu o tempo limite permitido.") from error
-        except TextExtractionError:
-            raise
-        except Exception as error:
-            raise TextExtractionError("Falha ao processar o arquivo enviado.") from error
+    future = _EXTRACTION_EXECUTOR.submit(extractor, *args)
+    try:
+        return future.result(timeout=EXTRACTION_TIMEOUT_SECONDS)
+    except FutureTimeoutError as error:
+        future.cancel()
+        raise TextExtractionError("A extração excedeu o tempo limite permitido.") from error
+    except TextExtractionError:
+        raise
+    except Exception as error:
+        raise TextExtractionError("Falha ao processar o arquivo enviado.") from error
 
 
 def ensure_allowed_file_signature(suffix: str, content: bytes) -> None:

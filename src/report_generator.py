@@ -221,7 +221,11 @@ def sanitize_excel_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
 
 
 def sanitize_excel_value(value: object) -> object:
-    if value is None or pd.isna(value) or isinstance(value, (bool, int, float)):
+    if value is None:
+        return value
+    if pd.api.types.is_bool(value) or pd.api.types.is_number(value):
+        return value
+    if pd.isna(value):
         return value
     text = str(value)
     stripped = text.lstrip()

@@ -10,6 +10,7 @@ from src.auth import (
     register_failed_attempt,
     register_successful_login,
 )
+from src import auth
 
 
 def test_get_expected_credentials_from_auth_secrets():
@@ -34,7 +35,7 @@ def test_environment_credentials_take_precedence():
 
 def test_credentials_match_uses_expected_values():
     assert credentials_configured("analista", "segredo-super-forte") is True
-    assert credentials_configured("analista", "curta") is False
+    assert credentials_configured("analista", "curta") is True
     assert credentials_match("analista", "segredo-super-forte", "analista", "segredo-super-forte") is True
     assert credentials_match("analista", "wrong", "analista", "segredo-super-forte") is False
     assert credentials_match("admin", "secret", None, None) is False
@@ -48,7 +49,15 @@ def test_credential_policy_rejects_weak_values():
 
 
 def test_build_client_key_prefers_ip_and_falls_back_to_session():
-    assert build_client_key(headers={"x-real-ip": "10.1.2.3"}, session_identifier="abc") == "ip:10.1.2.3"
+    assert build_client_key(headers={"x-real-ip": "10.1.2.3"}, session_identifier="abc") == "session:abc"
+    assert (
+        build_client_key(
+            headers={"x-real-ip": "10.1.2.3"},
+            session_identifier="abc",
+            trust_proxy_headers=True,
+        )
+        == "ip:10.1.2.3"
+    )
     assert build_client_key(headers={}, session_identifier="abc") == "session:abc"
 
 
@@ -71,3 +80,16 @@ def test_bruteforce_controls_lock_and_reset_on_success():
 
     register_successful_login(client_key)
     assert is_locked_out(client_key, now=1002.0) == (False, 0)
+
+
+def test_auth_registry_prunes_old_entries(monkeypatch):
+    AUTH_REGISTRY.clear()
+    monkeypatch.setattr(auth, "AUTH_RATE_WINDOW_SECONDS", 10)
+    monkeypatch.setattr(auth, "AUTH_REGISTRY_MAX_ENTRIES", 2)
+
+    register_failed_attempt("session:old", now=100.0)
+    register_failed_attempt("session:new1", now=200.0)
+    register_failed_attempt("session:new2", now=201.0)
+
+    assert "session:old" not in AUTH_REGISTRY
+    assert len(AUTH_REGISTRY) <= 2

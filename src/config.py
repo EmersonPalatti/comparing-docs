@@ -32,6 +32,8 @@ AUTH_MAX_ATTEMPTS = int(os.getenv("AUTH_MAX_ATTEMPTS", "5"))
 AUTH_LOCKOUT_SECONDS = int(os.getenv("AUTH_LOCKOUT_SECONDS", "600"))
 AUTH_BASE_DELAY_SECONDS = float(os.getenv("AUTH_BASE_DELAY_SECONDS", "0.5"))
 AUTH_MAX_DELAY_SECONDS = float(os.getenv("AUTH_MAX_DELAY_SECONDS", "4.0"))
+AUTH_REGISTRY_MAX_ENTRIES = int(os.getenv("AUTH_REGISTRY_MAX_ENTRIES", "10000"))
+AUTH_TRUST_PROXY_HEADERS = os.getenv("AUTH_TRUST_PROXY_HEADERS", "false").lower() == "true"
 
 DISCLAIMER_PT = (
     "Este relatório apresenta uma análise automatizada de similaridade entre disciplinas "
@@ -39,3 +41,17 @@ DISCLAIMER_PT = (
     "instituição de ensino. A aceitação final de equivalência ou aproveitamento de "
     "créditos deve ser realizada por um revisor humano."
 )
+
+DISCLAIMER_EN = (
+    "This report provides an automated similarity analysis between academic subjects "
+    "based on the uploaded documents. It does not represent an official institutional "
+    "decision. Final acceptance of subject equivalency or credit transfer depends on "
+    "the rules and review process of the educational institution."
+)
+
+CLASSIFICATION_LABELS_PT = {
+    "strong_equivalency": "Forte indicação de equivalência",
+    "likely_equivalency": "Provável equivalência, revisar manualmente",
+    "partial_similarity": "Similaridade parcial",
+    "no_match": "Nenhuma equivalência forte encontrada",
+}

@@ -31,5 +31,7 @@
 ## Pendências residuais por severidade
 
 - **Média**: rate limit depende de memória do processo; em escala horizontal recomenda-se backend compartilhado (Redis) para contagem global.
+- **Média**: timeout de extração limita o tempo de resposta da requisição, mas threads de parsing iniciadas podem continuar executando em background até concluírem.
+- **Baixa**: chaves por IP via `X-Forwarded-For`/`X-Real-IP` só devem ser habilitadas com proxy reverso confiável; por padrão usa identificador de sessão.
 - **Baixa**: validação de tipo para `.csv`/`.txt` usa heurística binária; pode exigir inspeção MIME avançada em cenários mais heterogêneos.
 - **Baixa**: PDFs extremamente complexos ainda podem gerar custo computacional elevado, apesar dos limites atuais.
