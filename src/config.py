@@ -17,6 +17,11 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 LLM_MODEL = os.getenv("LLM_MODEL", "")
 USE_LLM_JUSTIFICATION = os.getenv("USE_LLM_JUSTIFICATION", "false").lower() == "true"
 
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", 10 * 1024 * 1024))
+MAX_PDF_PAGES = int(os.getenv("MAX_PDF_PAGES", 200))
+MAX_SPREADSHEET_ROWS = int(os.getenv("MAX_SPREADSHEET_ROWS", 10000))
+MAX_SPREADSHEET_COLUMNS = int(os.getenv("MAX_SPREADSHEET_COLUMNS", 200))
+
 DISCLAIMER_PT = (
     "Este relatório apresenta uma análise automatizada de similaridade entre disciplinas "
     "com base nos documentos enviados. Ele não representa uma decisão oficial da "
