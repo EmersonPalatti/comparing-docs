@@ -33,6 +33,23 @@ DETAILED_SCORE_COLUMNS = [
 ]
 
 
+def sanitize_spreadsheet_cell(value: object) -> object:
+    if not isinstance(value, str):
+        return value
+
+    if value.startswith(("=", "+", "-", "@")):
+        return f"'{value}"
+    return value
+
+
+def sanitize_textual_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
+    sanitized = dataframe.copy()
+    text_columns = sanitized.select_dtypes(include=["object", "string"]).columns
+    for column in text_columns:
+        sanitized[column] = sanitized[column].map(sanitize_spreadsheet_cell)
+    return sanitized
+
+
 def matches_to_dataframe(matches: list[SubjectMatch]) -> pd.DataFrame:
     rows = []
     for match in matches:
@@ -56,7 +73,7 @@ def matches_to_dataframe(matches: list[SubjectMatch]) -> pd.DataFrame:
                 "Justificativa": match.justification or concise_justification(match),
             }
         )
-    return pd.DataFrame(rows)
+    return sanitize_textual_columns(pd.DataFrame(rows))
 
 
 def matches_to_detailed_display_dataframe(matches: list[SubjectMatch]) -> pd.DataFrame:
@@ -145,7 +162,7 @@ def final_review_report_to_xlsx(
     previous_subjects: list[Subject],
     current_subjects: list[Subject],
 ) -> bytes:
-    selected = selected_matches.copy()
+    selected = sanitize_textual_columns(selected_matches)
     previous_without_selection = subjects_without_selected_match(
         previous_subjects,
         selected,
@@ -192,7 +209,9 @@ def subjects_without_selected_match(
                 "Ementa": subject.syllabus,
             }
         )
-    return pd.DataFrame(rows, columns=["Disciplina", "Carga horária", "Documento fonte", "Ementa"])
+    return sanitize_textual_columns(
+        pd.DataFrame(rows, columns=["Disciplina", "Carga horária", "Documento fonte", "Ementa"])
+    )
 
 
 def workload_column_for(subject_column: str) -> str:
